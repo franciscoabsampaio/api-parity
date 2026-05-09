@@ -1,9 +1,11 @@
 [package]
 name = "api-parity-rs-core"
+description = "Runtime types and inventory glue for the api-parity-rs port plugin."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Runtime types and inventory glue for the api-parity-rs port plugin."
+readme.workspace = true
+repository.workspace = true
 
 [dependencies]
 inventory = "0.3"
