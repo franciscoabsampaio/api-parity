@@ -1,6 +1,6 @@
 [project]
 name = "api-parity"
-version = "0.1.0"
+version = "0.0.1"
 description = "Cross-language API parity differ and report renderer."
 requires-python = ">=3.10"
 dependencies = []

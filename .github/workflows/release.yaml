@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to promote (e.g. api-parity-v0.1.0, api-parity-py-v0.1.0, api-parity-rs-v0.1.0)'
+        description: 'Tag to promote (e.g. api-parity-v0.0.1, api-parity-py-v0.0.1, api-parity-rs-v0.0.1)'
         required: true
 
 jobs:
