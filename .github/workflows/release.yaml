@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to promote (e.g. api-parity-v0.1.0, api-parity-py-v0.1.0, api-parity-rs-v0.1.0)'
+        required: true
+
+jobs:
+  parse-tag:
+    name: Parse and validate tag
+    runs-on: ubuntu-latest
+    outputs:
+      package: ${{ steps.parse.outputs.package }}
+      version: ${{ steps.parse.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: parse
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          if [[ "$TAG" =~ ^(api-parity(-py|-rs)?)-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "package=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+            echo "version=${BASH_REMATCH[3]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag $TAG does not match <package>-vX.Y.Z" >&2
+            exit 1
+          fi
+
+      - name: Verify tag exists
+        run: |
+          if ! git rev-parse "refs/tags/${{ github.event.inputs.tag }}" >/dev/null 2>&1; then
+            echo "Tag ${{ github.event.inputs.tag }} not found in repo" >&2
+            exit 1
+          fi
+
+  promote-draft:
+    needs: parse-tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          name: ${{ needs.parse-tag.outputs.package }} v${{ needs.parse-tag.outputs.version }}
+          draft: false
+          make_latest: true
+
+  publish-pypi:
+    needs: [parse-tag, promote-draft]
+    if: ${{ needs.parse-tag.outputs.package != 'api-parity-rs' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/${{ needs.parse-tag.outputs.package }}/
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download release assets
+        uses: robinraju/release-downloader@v1.9
+        with:
+          tag: ${{ github.event.inputs.tag }}
+          fileName: '*'
+          out-file-path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          skip-existing: true
+          verbose: true
+
+  publish-crates:
+    needs: [parse-tag, promote-draft]
+    if: ${{ needs.parse-tag.outputs.package == 'api-parity-rs' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: crates-io
+      url: https://crates.io/crates/api-parity-rs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag }}
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish api-parity-rs-macros
+        uses: franciscoabsampaio/cargo-publish@main
+        with:
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          crate-name: api-parity-rs-macros
+          crate-version: ${{ needs.parse-tag.outputs.version }}
+
+      - name: Wait for crates.io to index macros
+        run: sleep 30
+
+      - name: Publish api-parity-rs-core
+        uses: franciscoabsampaio/cargo-publish@main
+        with:
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          crate-name: api-parity-rs-core
+          crate-version: ${{ needs.parse-tag.outputs.version }}
+
+      - name: Publish api-parity-rs (cli)
+        uses: franciscoabsampaio/cargo-publish@main
+        with:
+          registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          crate-name: api-parity-rs
+          crate-version: ${{ needs.parse-tag.outputs.version }}

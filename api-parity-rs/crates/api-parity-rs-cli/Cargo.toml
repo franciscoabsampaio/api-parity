@@ -1,0 +1,13 @@
+[package]
+name = "api-parity-rs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CLI driver for the api-parity-rs port plugin (wraps `cargo run --bin api-parity-dump`)."
+
+[[bin]]
+name = "api-parity-rs"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }

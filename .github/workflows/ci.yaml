@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Three independent jobs for the three packages, run in parallel on every
+# push/PR. Future optimization: gate each behind a paths-filter so an
+# unrelated package change doesn't trigger all three.
+jobs:
+  test-api-parity:
+    name: api-parity (python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api-parity
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip build
+      - run: python -m build --sdist --wheel --outdir dist/
+      - run: pip install dist/*.whl
+      - name: Smoke-test CLI entry point
+        run: api-parity --help
+      - name: Run tests if present
+        run: |
+          if [ -d tests ]; then
+            pip install pytest
+            pytest tests -vs
+          else
+            echo "no tests/ dir yet — skipping"
+          fi
+
+  test-api-parity-py:
+    name: api-parity-py (python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api-parity-py
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip build
+      - run: python -m build --sdist --wheel --outdir dist/
+      - run: pip install dist/*.whl
+      - name: Smoke-test CLI entry point
+        run: api-parity-py --help
+      - name: Run tests if present
+        run: |
+          if [ -d tests ]; then
+            pip install pytest
+            pytest tests -vs
+          else
+            echo "no tests/ dir yet — skipping"
+          fi
+
+  test-api-parity-rs:
+    name: api-parity-rs (rust workspace)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api-parity-rs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: api-parity-rs
+      - run: cargo check --workspace --all-features
+      - run: cargo test --workspace --all-features

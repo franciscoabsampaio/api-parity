@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/api-parity-rs-core",
+    "crates/api-parity-rs-macros",
+    "crates/api-parity-rs-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+# Internal crates pinned in lockstep. Bump alongside workspace.package.version.
+[workspace.dependencies]
+api-parity-rs-macros = { path = "crates/api-parity-rs-macros", version = "=0.1.0" }
