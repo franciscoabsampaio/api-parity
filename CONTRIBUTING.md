@@ -86,10 +86,12 @@ it with another plugin (e.g. `api-parity-py reference pyspark` →
 
 ## Repo conventions
 
-- Each package versions independently. The three crates inside
-  `api-parity-rs/` (`-core`, `-macros`, the `-cli` published as
-  `api-parity-rs`) move in lockstep — bump `[workspace.package].version`
-  and the `=X.Y.Z` pin under `[workspace.dependencies]` together.
+- Each package versions independently. The two crates inside
+  `api-parity-rs/` (`api-parity-rs` — lib + bin in one crate — and
+  `api-parity-rs-macros`, kept separate because `proc-macro = true` crates
+  can't ship anything else) move in lockstep — bump
+  `[workspace.package].version` and the `=X.Y.Z` pin under
+  `[workspace.dependencies]` together.
 - Bump `schema_version` in `SCHEMA.md` (and gate readers on it) when the
   wire format changes; package versions are independent of this.
 - Tests live under each package's `tests/` directory and run via the
@@ -108,5 +110,4 @@ The `Build / Test / Draft` workflow builds the artifacts and creates a
 *draft* GitHub release. When the draft looks right, run the `Release`
 workflow (`workflow_dispatch`) with the same tag — it promotes the draft
 and publishes to PyPI (for the Python packages) or crates.io (for `rs`:
-`api-parity-rs-macros` first, then `api-parity-rs-core`, then the
-`api-parity-rs` CLI crate).
+`api-parity-rs-macros` first, then `api-parity-rs`).

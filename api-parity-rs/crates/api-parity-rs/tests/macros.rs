@@ -12,7 +12,7 @@
 
 #![allow(dead_code)]
 
-use api_parity_rs_core::{parity, parity_impl, ParityEntry, Status};
+use api_parity_rs::{parity, parity_impl, ParityEntry, Status};
 
 // ---------------------------------------------------------------------------
 // Test 1 — parity_impl with a parent path.
@@ -159,7 +159,7 @@ fn parity_on_free_fn_uses_module_path() {
 #[cfg(feature = "serde")]
 #[test]
 fn dump_to_writer_emits_sorted_envelope() {
-    use api_parity_rs_core::dump_to_writer;
+    use api_parity_rs::dump_to_writer;
     let mut buf: Vec<u8> = Vec::new();
     dump_to_writer("test-source", "9.9.9", &mut buf).unwrap();
     let s = String::from_utf8(buf).unwrap();

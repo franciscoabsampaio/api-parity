@@ -1,0 +1,33 @@
+[package]
+name = "api-parity-rs"
+description = "Port-side plugin for Rust targets — runtime types, attribute macros, and a CLI driver."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+
+[lib]
+name = "api_parity_rs"
+path = "src/lib.rs"
+
+[[bin]]
+name = "api-parity-rs"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[dependencies]
+inventory = "0.3"
+api-parity-rs-macros = { workspace = true }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+clap = { version = "4", features = ["derive"], optional = true }
+
+[features]
+# `cargo install api-parity-rs` builds the CLI by default. Target crates
+# that only want to annotate their APIs can opt out with
+# `default-features = false` (and add `features = ["serde"]` if they need
+# the JSON dump helper).
+default = ["cli"]
+cli = ["dep:clap"]
+serde = ["dep:serde", "dep:serde_json"]

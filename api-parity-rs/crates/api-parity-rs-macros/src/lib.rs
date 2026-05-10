@@ -236,7 +236,7 @@ fn build_submit(
     })?;
 
     // `status` is parsed as a bare ident so it can appear as
-    // `::api_parity_rs_core::Status::#status` (a path, not a string). Validate
+    // `::api_parity_rs::Status::#status` (a path, not a string). Validate
     // here; an invalid one would otherwise produce a confusing
     // "no variant named X" error from rustc later.
     if status != "Implemented" && status != "Partial" && status != "Unimplemented" {
@@ -273,14 +273,14 @@ fn build_submit(
         None => quote!(None),
     };
 
-    // Fully-qualified `::api_parity_rs_core::...` paths so this works no
+    // Fully-qualified `::api_parity_rs::...` paths so this works no
     // matter what the user has imported.
     Ok(quote! {
-        ::api_parity_rs_core::inventory::submit! {
-            ::api_parity_rs_core::ParityEntry {
+        ::api_parity_rs::inventory::submit! {
+            ::api_parity_rs::ParityEntry {
                 path: #path_lit,
                 implementation: #impl_path_expr,
-                status: ::api_parity_rs_core::Status::#status,
+                status: ::api_parity_rs::Status::#status,
                 since: #since_tok,
                 comment: #comment_tok,
                 issue: #issue_tok,

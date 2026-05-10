@@ -16,7 +16,7 @@ Three pieces:
   (`api-parity-py reference <pkg>`). Walks a Python package and emits
   the public-API surface as JSON.
 - **`api-parity-rs/`** — Rust port plugin. A workspace with two library
-  crates: `api-parity-rs-core` (runtime types + inventory + serde-gated
+  crates: `api-parity-rs` (runtime types + inventory + serde-gated
   `dump_to_writer`) and `api-parity-rs-macros` (`#[parity]` and
   `#[parity_impl]` attribute macros — names kept short on purpose).
   Target Rust crates depend on these and write a thin bin that calls
@@ -40,7 +40,7 @@ Three pieces:
 - **Done and exercised:** scaffolding, schema doc, `api-parity-py/walk.py`
   (real introspection ported), `api-parity/compare.py` (left-join
   differ), `api-parity/render_markdown.py` (renderer ported),
-  `api-parity-rs-core` (full impl with serde-gated dump),
+  `api-parity-rs` (full impl with serde-gated dump),
   `api-parity-rs-macros` (full impl ported, supports relative `path = ".foo"`
   via parent-prefix expansion).
 - **End-to-end smoke test passes**: walking real `pyspark.sql.{connect,session}`
@@ -57,10 +57,10 @@ In rough priority:
    `__pycache__`, `dist/`, `.venv`. Rust: `target/`, `Cargo.lock` for libs).
 2. Migrate `spark-connect` (sibling repo at `../spark-connect`) off its
    in-tree `crates/api-parity-{core,macros}` and onto this repo's
-   `api-parity-rs-core` + `api-parity-rs-macros`. The macros there use
+   `api-parity-rs` + `api-parity-rs-macros`. The macros there use
    the arg name `reference = "..."` while these use `path = "..."` —
    that's the one breaking rename. The emitted code targets
-   `::api_parity_rs_core::...` instead of `::api_parity::...`
+   `::api_parity_rs::...` instead of `::api_parity::...`
    (note the `_rs_` infix).
 3. Decide how `api-parity-rs` is consumed: a published crates.io
    release, a git dep, or a path dep. `api-parity-{core,py}` same
@@ -68,7 +68,7 @@ In rough priority:
 4. Tests:
    - `api-parity-rs`: copy the 6 tests in
      `../spark-connect/crates/api-parity/tests/macros.rs`, rename
-     the inner crate paths from `api_parity` → `api_parity_rs_core`,
+     the inner crate paths from `api_parity` → `api_parity_rs`,
      and rename `reference =` → `path =`.
    - `api-parity-py`: a couple of golden-file tests against a tiny
      synthetic package would be more useful than tests against pyspark
@@ -103,7 +103,7 @@ parity/                                # working dir name (not renamed)
     ├── Cargo.toml                     # workspace
     ├── README.md                      # consumer guide
     └── crates/
-        ├── api-parity-rs-core/        # runtime + dump_to_writer (serde-gated)
+        ├── api-parity-rs/        # runtime + dump_to_writer (serde-gated)
         └── api-parity-rs-macros/      # #[parity], #[parity_impl]
 ```
 
@@ -114,7 +114,7 @@ then renamed again 2026-05-07 (`parity` → `api-parity`):
 
 - `tools/pyspark_inventory.py` → `api-parity-py/src/api_parity_py/walk.py`
   (output flattened to `entries[]`, `kind` set per item).
-- `crates/api-parity/src/lib.rs` → `api-parity-rs/crates/api-parity-rs-core/src/lib.rs`
+- `crates/api-parity/src/lib.rs` → `api-parity-rs/crates/api-parity-rs/src/lib.rs`
   (field rename `reference` → `path`; added serde-gated `dump_to_writer`).
 - `crates/api-parity-macros/src/lib.rs` → `api-parity-rs/crates/api-parity-rs-macros/src/lib.rs`
   (arg rename `reference` → `path`).

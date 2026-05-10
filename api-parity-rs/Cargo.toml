@@ -1,9 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/api-parity-rs-core",
+    "crates/api-parity-rs",
     "crates/api-parity-rs-macros",
-    "crates/api-parity-rs-cli",
 ]
 
 [workspace.package]
