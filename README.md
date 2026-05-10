@@ -10,6 +10,11 @@ Cross-language API parity tracker. Compares a **reference** API (the truth)
 against a **port** (a local implementation) and reports what's covered, what's
 missing, and what's drifted.
 
+> ⚠️ **Disclaimer:** As a stark exception to the rest of my work,
+this project, while designed by a human, was almost entirely vibe-coded.
+I made this decision due to the low-criticality nature of the use case:
+`api-parity` doesn't run in production - it's a simple tool to assist during development. *And yet*, most code was still reviewed by a human. Hope you find it useful.
+
 ## Layout
 
 - **`api-parity/`** — Python CLI (`api-parity compare`). Knows nothing about any
