@@ -62,7 +62,7 @@ jobs:
     if: ${{ needs.parse-tag.outputs.package != 'rs' }}
     runs-on: ubuntu-latest
     environment:
-      name: pypi
+      name: release
       url: https://pypi.org/project/${{ needs.parse-tag.outputs.dir }}/
     permissions:
       id-token: write
@@ -86,7 +86,7 @@ jobs:
     if: ${{ needs.parse-tag.outputs.package == 'rs' }}
     runs-on: ubuntu-latest
     environment:
-      name: crates-io
+      name: release
       url: https://crates.io/crates/api-parity-rs
     steps:
       - uses: actions/checkout@v4
