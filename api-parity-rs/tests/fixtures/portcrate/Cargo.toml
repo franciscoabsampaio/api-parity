@@ -1,0 +1,19 @@
+[package]
+name = "portcrate"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "api-parity-dump"
+path = "src/bin/api-parity-dump.rs"
+
+[dependencies]
+api-parity-rs = { path = "../../../crates/api-parity-rs", default-features = false, features = ["serde"] }
+
+# Self-contained workspace so the parent api-parity-rs workspace
+# doesn't try to absorb this fixture as a member.
+[workspace]

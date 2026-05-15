@@ -6,9 +6,9 @@
 [![Crates.io](https://img.shields.io/crates/v/api-parity-rs.svg)](https://crates.io/crates/api-parity-rs)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache2-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
 
-Cross-language API parity tracker. Compares a **reference** API (the truth)
-against a **port** (a local implementation) and reports what's covered, what's
-missing, and what's drifted.
+`api-parity` provides a consistent way of comparing a **reference** API (the truth) against a **port** (another implementation). Because `api-parity`'s unit of measure is language-agnostic (JSON files), it can easily compare cross-language, and report what's covered, what's missing, and what's drifted.
+
+All it requires is the right plugins (for each language), and the port's members (classes, properties, methods) to be annotated.
 
 > ⚠️ **Disclaimer:** As a stark exception to the rest of my work,
 this project, while designed by a human, was almost entirely vibe-coded.

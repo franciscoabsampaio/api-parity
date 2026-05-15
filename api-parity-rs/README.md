@@ -13,7 +13,13 @@ Port-side plugin for Rust targets. Two crates:
 ## Installing the CLI
 
 ```bash
+# Port mode only (cargo run --bin api-parity-dump under the hood):
 cargo install api-parity-rs
+
+# Plus reference-mode walking (rustdoc-json + public-api). Requires
+# nightly Rust at runtime.
+cargo install api-parity-rs --features walker
+rustup toolchain install nightly
 ```
 
 ## Usage in a target crate
@@ -23,7 +29,7 @@ Add `api-parity-rs` as a library-only dep (skip the default CLI feature, keep
 
 ```toml
 [dependencies]
-api-parity-rs = { version = "0.0.1", default-features = false, features = ["serde"] }
+api-parity-rs = { version = "0.0.2", default-features = false, features = ["serde"] }
 
 [[bin]]
 name = "api-parity-dump"
@@ -64,5 +70,14 @@ End-to-end against a Python reference:
 ```bash
 api-parity-rs port path/to/target-crate -o port.json
 api-parity-py reference pyspark.sql.connect -o ref.json
+api-parity compare ref.json port.json
+```
+
+End-to-end Rust ↔ Rust (compares two crates' public APIs, no
+annotations needed):
+
+```bash
+api-parity-rs reference path/to/crate-a -o ref.json    # walker mode (default)
+api-parity-rs port      path/to/crate-b -o port.json   # annotation mode (default)
 api-parity compare ref.json port.json
 ```

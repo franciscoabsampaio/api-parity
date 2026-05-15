@@ -3,40 +3,45 @@
 Most contributions land in one of three places:
 
 - **`api-parity/`** — the language-agnostic differ + report renderer.
-- **`api-parity-py/`** — the Python reference plugin.
-- **`api-parity-rs/`** — the Rust port plugin.
+- **`api-parity-py/`** — Python plugin (reference + port).
+- **`api-parity-rs/`** — Rust plugin (reference + port).
 
 Adding a new language usually means writing a new plugin, not touching
-core. This guide is for that case.
+the differ. This guide is for that case.
 
 ## Writing a plugin
 
-A plugin is a single executable named `api-parity-<lang>` that emits JSON
-matching the schema in [`SCHEMA.md`](SCHEMA.md). Two things to decide
+A plugin is an executable named `api-parity-<lang>` that emits JSON
+matching the schema in [`SCHEMA.md`](SCHEMA.md). Three things to decide
 upfront:
 
-1. **Which `kind`?** A `reference` plugin walks a canonical API and emits
-   the surface (every public class, method, property, function). A `port`
-   plugin walks a local implementation and emits what it claims to mirror,
-   tagged with `status` and `implementation`. Plugins can support one or
-   both.
-2. **What is `path`?** The join key. Both sides must agree on the same
-   dotted-name convention — typically the reference language's natural
-   path (e.g. `pyspark.sql.session.SparkSession.sql`). Port plugins
-   echo that string verbatim; their own `implementation` field is what
-   carries the local symbol path.
+1. **Which `kind`s do you support?** A `reference` envelope describes the
+   canonical API surface ("these paths exist"). A `port` envelope
+   describes the local implementation's claims ("we mirror these paths
+   with this status"). A plugin can support one or both.
+2. **Which `mode`s do you support?** A `walker` produces entries by
+   inspecting a target's public API surface (introspection, AST parsing,
+   rustdoc-json, etc.). An `annotation` mode collects markers attached
+   directly to local code (Python decorators, Rust attribute macros).
+   `kind` and `mode` are orthogonal — see *Modes* below.
+3. **What is `path`?** The join key. Both sides of a comparison must
+   agree on a dotted-name convention. Typically the reference's natural
+   path (e.g. `pyspark.sql.session.SparkSession.sql`). Port entries
+   echo that string verbatim; the local symbol goes in `implementation`.
 
 ### CLI contract
 
 ```
-api-parity-<lang> <kind> <target> [-o PATH | -]
+api-parity-<lang> <kind> [--mode walker|annotation] <target> [-o PATH | -]
 ```
 
-- `kind`: one of `reference` or `port`.
-- `target`: plugin-specific (e.g. a Python package name, a Rust crate path).
+- `kind`: `reference` or `port`.
+- `--mode`: defaults to `walker` for `reference`, `annotation` for `port`.
+  Override when you want the inverted shape.
+- `target`: plugin-specific (a Python package name, a Rust crate path, …).
 - `-o PATH`: output file, or `-` for stdout. Default stdout.
-- Exit `64` with a stderr message when the requested `kind` isn't supported
-  or isn't yet implemented.
+- Exit `64` with a stderr message when the requested `kind` or
+  `(kind, mode)` combination isn't supported or isn't yet implemented.
 
 ### Wire format
 
@@ -54,35 +59,37 @@ Sort entries by `path` (and dedup on `(path, kind)` for references). The
 JSON is part of the contract — version-to-version diffs should be minimal
 noise.
 
-### Implementation patterns
+### Modes
 
-The user-facing CLI is the same shape for every plugin, but the language
-dictates how you implement it:
+The two production modes are orthogonal to the two kinds:
 
-- **Introspection** (`api-parity-py`): the plugin is a self-contained CLI
-  that imports the target at runtime and walks it. Works wherever the host
-  language has a usable reflection API.
-- **Embedded dump** (`api-parity-rs`): the target depends on plugin
-  libraries that record entries at compile/link time, and ships a tiny
-  bin (`api-parity-dump`) that flushes them as JSON. The plugin's CLI is
-  a wrapper that drives `cargo run --bin api-parity-dump --manifest-path
-  <target>` (or the equivalent build invocation). Necessary for compiled
-  languages where annotations exist only inside the target's compilation
-  unit.
+|                       | `mode = walker`                                    | `mode = annotation`                                  |
+| --------------------- | -------------------------------------------------- | ---------------------------------------------------- |
+| `kind = reference`    | **Default.** Inspect a target's public API surface and emit `{path, kind}` per item. | Code-level declarations (e.g. `@reference(path=…)`) collected at import/link time. |
+| `kind = port`         | Treat every walked item as `status = implemented`; `implementation` = the local symbol. Useful when both sides share a path scheme (e.g. rs-port vs rs-reference). | **Default.** Decorators / attribute macros (`@parity` / `#[parity]`) declare what the local code mirrors and at what status. |
 
-Both produce the same envelope and obey the same CLI contract.
+A walker is whatever way the host language exposes its public API:
+`inspect.getmembers` for Python, `cargo +nightly rustdoc --output-format
+json` for Rust, etc. An annotation system is whatever attaches metadata
+to code in that language: decorators, attribute macros, Java
+annotations, TypeScript decorators, C# attributes.
 
-## Testing a plugin against core
+Cross-language walker-as-port is technically allowed but practically
+needs a path-scheme translation (Rust paths use `::`, Python paths use
+`.`). The differ itself doesn't translate — provide a path rewrite at
+the plugin level if you need it.
+
+## Testing a plugin against the differ
 
 ```bash
-api-parity-<lang> reference <pkg> -o ref.json
-api-parity-<lang> port      <pkg> -o port.json
+api-parity-<lang> reference <target> -o ref.json
+api-parity-<lang> port      <target> -o port.json
 api-parity compare ref.json port.json
 ```
 
 If your plugin is symmetric you can run it against itself; otherwise pair
-it with another plugin (e.g. `api-parity-py reference pyspark` →
-`api-parity-rs`-built port from a target crate).
+it with another plugin (e.g. `api-parity-py reference pyspark` against
+an `api-parity-rs port` of an annotated Rust crate).
 
 ## Repo conventions
 
@@ -102,12 +109,15 @@ it with another plugin (e.g. `api-parity-py reference pyspark` →
 
 Releases are tag-driven. Push a tag matching one of:
 
-- `api-parity-vX.Y.Z`     (the differ; PyPI dist `api-parity`)
-- `api-parity-py-vX.Y.Z`  (the Python reference plugin)
-- `api-parity-rs-vX.Y.Z`  (the Rust port plugin workspace)
+- `vX.Y.Z`     (the differ; PyPI dist `api-parity`)
+- `py-vX.Y.Z`  (the Python plugin)
+- `rs-vX.Y.Z`  (the Rust plugin workspace)
 
 The `Build / Test / Draft` workflow builds the artifacts and creates a
 *draft* GitHub release. When the draft looks right, run the `Release`
 workflow (`workflow_dispatch`) with the same tag — it promotes the draft
 and publishes to PyPI (for the Python packages) or crates.io (for `rs`:
 `api-parity-rs-macros` first, then `api-parity-rs`).
+
+The `Makefile` has shortcuts: `make tag-core VERSION=0.0.2`,
+`make tag-py VERSION=0.0.2`, `make tag-rs VERSION=0.0.2`.

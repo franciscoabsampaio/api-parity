@@ -91,13 +91,21 @@ def test_entries_are_sorted_and_deduped():
     assert len(keys) == len(set(keys))
 
 
-def test_unsupported_kind_returns_exit_64(monkeypatch, capsys):
-    """The CLI contract: plugins exit 64 on unsupported `kind`s
-    (per SCHEMA.md). Spot-check via the entry point rather than spawning
-    a subprocess so the test stays fast."""
-    from api_parity_py import __main__ as cli
+def test_submodule_import_failures_surface_on_stderr(capsys, monkeypatch):
+    """A missing optional dep silently dropped submodules used to make an
+    incomplete walk look complete. The walker now prints a grouped stderr
+    summary so the user notices."""
+    original = walk.importlib.import_module
 
-    monkeypatch.setattr("sys.argv", ["api-parity-py", "port", "tinypkg"])
-    rc = cli.main()
-    assert rc == 64
-    assert "not yet implemented" in capsys.readouterr().err
+    def flaky(name: str, *a, **kw):
+        # Make every submodule import after the top-level package raise.
+        if name.startswith("tinypkg.") and name != "tinypkg":
+            raise ImportError("simulated missing dep: pandas")
+        return original(name, *a, **kw)
+
+    monkeypatch.setattr(walk.importlib, "import_module", flaky)
+    walk._preload_submodules("tinypkg")
+    err = capsys.readouterr().err
+    assert "skipped" in err
+    assert "tinypkg" in err
+    assert "simulated missing dep: pandas" in err

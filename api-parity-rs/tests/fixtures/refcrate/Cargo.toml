@@ -1,0 +1,12 @@
+[package]
+name = "refcrate"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+# Self-contained workspace so the parent api-parity-rs workspace
+# doesn't try to absorb this fixture as a member.
+[workspace]

@@ -79,6 +79,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      # `--all-features` enables `walker`, which shells to nightly rustdoc.
+      - uses: dtolnay/rust-toolchain@nightly
 
       - name: Verify workspace version matches tag
         run: |

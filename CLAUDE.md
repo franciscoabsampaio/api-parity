@@ -49,34 +49,39 @@ Three pieces:
   members under their parent class and renders class-level status.
 - **Stubs remaining**: none. Every file has working code.
 
-## Things you'll want to do
+## Roadmap
 
-In rough priority:
+**0.0.2 — walker / annotation symmetry.** Reframe references and ports
+as orthogonal to the production method. Default mapping stays
+(`reference → walker`, `port → annotation`), but each plugin should
+support both directions where feasible:
 
-1. `git init` the repo, add a sensible `.gitignore` (Python: `*.egg-info`,
-   `__pycache__`, `dist/`, `.venv`. Rust: `target/`, `Cargo.lock` for libs).
-2. Migrate `spark-connect` (sibling repo at `../spark-connect`) off its
-   in-tree `crates/api-parity-{core,macros}` and onto this repo's
-   `api-parity-rs` + `api-parity-rs-macros`. The macros there use
-   the arg name `reference = "..."` while these use `path = "..."` —
-   that's the one breaking rename. The emitted code targets
-   `::api_parity_rs::...` instead of `::api_parity::...`
-   (note the `_rs_` infix).
-3. Decide how `api-parity-rs` is consumed: a published crates.io
-   release, a git dep, or a path dep. `api-parity-{core,py}` same
-   question for PyPI.
-4. Tests:
-   - `api-parity-rs`: copy the 6 tests in
-     `../spark-connect/crates/api-parity/tests/macros.rs`, rename
-     the inner crate paths from `api_parity` → `api_parity_rs`,
-     and rename `reference =` → `path =`.
-   - `api-parity-py`: a couple of golden-file tests against a tiny
-     synthetic package would be more useful than tests against pyspark
-     itself.
-   - `api-parity`: feed it two hand-written JSON envelopes and
-     assert on the rendered Markdown.
-5. Per-language plugin guide: a short `CONTRIBUTING.md` describing how
-   to write a new plugin (just the JSON contract + CLI shape).
+- Python: add `@parity_impl` / `@parity` decorators (mirroring the Rust
+  attribute macros) so `api-parity-py port <pkg>` works. Optional
+  `@reference` decorator for declarative reference inventories.
+- Rust: add a walker behind a `walker` Cargo feature (so library users
+  who only annotate don't pay the cost). Implementation: shell out to
+  `cargo +nightly rustdoc --output-format json` and parse with the
+  `rustdoc-types` / `public-api` crates. Nightly is required to *run*
+  the walker, not to depend on the lib.
+- CLI grammar gains `--mode walker|annotation` with kind-based
+  defaults; unsupported combos exit 64.
+
+**Future plugins.**
+
+- `api-parity-ai` — natural-language-driven discovery (and, eventually,
+  translation between path schemes). Translation should run the AI
+  *after* a heuristic pass (substring / casing / module-prefix
+  rewriting), so the model only handles genuinely ambiguous cases. The
+  AI plugin is downstream of the schema; it produces the same
+  envelopes everything else does.
+
+**Other unblocked work.**
+
+- Migrate `../spark-connect` off its in-tree `crates/api-parity-{core,macros}`
+  onto this repo's published `api-parity-rs` + `api-parity-rs-macros`.
+  Breaking rename: macro arg `reference = "..."` → `path = "..."`;
+  emitted paths `::api_parity_rs::…` instead of `::api_parity_core::…`.
 
 ## Layout reference
 

@@ -23,6 +23,9 @@
 pub use inventory;
 pub use api_parity_rs_macros::{parity, parity_impl};
 
+#[cfg(feature = "walker")]
+pub mod walk;
+
 /// Implementation state of a tracked API.
 ///
 /// `Unimplemented` is special-cased by the macros: it requires a `comment`

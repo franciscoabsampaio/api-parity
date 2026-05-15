@@ -6,7 +6,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 license = "Apache-2.0"
 readme = "README.md"
@@ -14,4 +14,4 @@ repository = "https://github.com/franciscoabsampaio/api-parity"
 
 # Internal crates pinned in lockstep. Bump alongside workspace.package.version.
 [workspace.dependencies]
-api-parity-rs-macros = { path = "crates/api-parity-rs-macros", version = "=0.0.1" }
+api-parity-rs-macros = { path = "crates/api-parity-rs-macros", version = "=0.0.2" }

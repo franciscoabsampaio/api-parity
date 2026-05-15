@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "kind": "reference",
+  "language": "python",
+  "version": "1.0",
+  "source": "tinypkg",
+  "entries": [
+    {"path": "tinypkg.A", "kind": "class"},
+    {"path": "tinypkg.A.foo", "kind": "method"},
+    {"path": "tinypkg.A.bar", "kind": "method"},
+    {"path": "tinypkg.A.qux", "kind": "method"}
+  ]
+}

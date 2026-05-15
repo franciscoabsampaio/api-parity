@@ -68,6 +68,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      # The `walker` feature shells out to `cargo +nightly rustdoc
+      # --output-format json`, so the walker acceptance test
+      # (tests/cli_reference.rs) requires nightly to be installed.
+      - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: api-parity-rs
