@@ -1,31 +1,29 @@
 # api-parity-rs
 
-Port-side plugin for Rust targets. Two crates:
+Rust plugin for [`api-parity`](https://github.com/franciscoabsampaio/api-parity). Provides:
 
-- `api-parity-rs` — runtime types (`ParityEntry`, `Status`), the
-  `inventory::collect!` registration, the `dump_to_writer` helper (behind
-  the `serde` feature), and a CLI bin (behind the default `cli` feature)
-  that drives `cargo run --bin api-parity-dump` on a target crate.
-- `api-parity-rs-macros` — the `#[parity]` and `#[parity_impl]` attribute
-  proc-macros, kept separate because `proc-macro = true` crates can't ship
-  anything else.
+- Attribute macros (`#[parity]`, `#[parity_impl]`) for annotating a Rust crate as a **port** of some upstream API.
+- A reference-mode **walker** (behind the `walker` Cargo feature) that inspects another Rust crate's public surface via `cargo +nightly rustdoc`.
+- A CLI bin (`api-parity-rs`) that drives both modes and emits a `kind = port` / `kind = reference` envelope per [SCHEMA.md](../SCHEMA.md).
 
-## Installing the CLI
+The workspace contains two crates: `api-parity-rs` (lib + bin in one crate, gated by features) and `api-parity-rs-macros` (the proc-macros, separated because `proc-macro = true` crates can't ship anything else).
+
+## Install
 
 ```bash
-# Port mode only (cargo run --bin api-parity-dump under the hood):
+# CLI only — port-mode driver (cargo run --bin api-parity-dump under the hood):
 cargo install api-parity-rs
 
-# Plus reference-mode walking (rustdoc-json + public-api). Requires
-# nightly Rust at runtime.
-cargo install api-parity-rs --features walker
+# With reference-mode walker (rustdoc-json + public-api). Requires nightly Rust at runtime:
 rustup toolchain install nightly
+cargo install api-parity-rs --features walker
 ```
 
-## Usage in a target crate
+For library use (annotating a target crate), add it as a Cargo dep — see below.
 
-Add `api-parity-rs` as a library-only dep (skip the default CLI feature, keep
-`serde` so the dump helper is available):
+## Annotating a target crate
+
+Add the lib as a dep with the default CLI feature off; keep `serde` so the dump helper is available:
 
 ```toml
 [dependencies]
@@ -36,24 +34,25 @@ name = "api-parity-dump"
 path = "src/bin/api-parity-dump.rs"
 ```
 
-Annotate code:
+Annotate impls and free functions:
 
 ```rust
 use api_parity_rs::{parity, parity_impl};
 
-#[parity_impl(
-    path = "pyspark.sql.session.SparkSession",
-    status = Implemented,
-)]
+#[parity_impl(path = "pyspark.sql.session.SparkSession", status = Implemented)]
 impl SparkSession {
     #[parity(path = ".sql", status = Implemented, since = "3.4")]
-    pub fn sql(&self, query: &str) -> ... { ... }
+    pub fn sql(&self, query: &str) -> Result<DataFrame, SparkError> { /* … */ }
+
+    #[parity(path = ".stop", status = Unimplemented, comment = "no shutdown hook yet")]
+    pub fn stop(&self) -> Result<(), SparkError> { unimplemented!() }
 }
 ```
 
-Add `src/bin/api-parity-dump.rs`:
+Add a 3-line bin that serializes the registered entries:
 
 ```rust
+// src/bin/api-parity-dump.rs
 fn main() -> std::io::Result<()> {
     api_parity_rs::dump_to_writer(
         env!("CARGO_PKG_NAME"),
@@ -63,21 +62,61 @@ fn main() -> std::io::Result<()> {
 }
 ```
 
-## Running
+A leading `.` in a child `path` is rewritten to `<parent>.<child>` at macro-expansion time. `Status::Unimplemented` requires a `comment`.
 
-End-to-end against a Python reference:
+## CLI usage
+
+```bash
+api-parity-rs <kind> [--mode walker|annotation] <crate-path> [-o PATH | -]
+```
+
+- `kind`: `port` or `reference`.
+- `--mode`: defaults to `annotation` for `port`, `walker` for `reference`.
+- `<crate-path>`: directory containing the target `Cargo.toml`.
+- `-o`: output file, or `-` for stdout (default).
+
+<details>
+<summary>Example — port mode (annotated Rust target)</summary>
 
 ```bash
 api-parity-rs port path/to/target-crate -o port.json
-api-parity-py reference pyspark.sql.connect -o ref.json
-api-parity compare ref.json port.json
 ```
 
-End-to-end Rust ↔ Rust (compares two crates' public APIs, no
-annotations needed):
+Drives `cargo run --bin api-parity-dump --manifest-path <target>/Cargo.toml` and forwards stdout. The target crate must define `src/bin/api-parity-dump.rs` (see *Annotating a target crate* above).
+
+</details>
+
+<details>
+<summary>Example — reference mode (walker, no annotations needed)</summary>
 
 ```bash
-api-parity-rs reference path/to/crate-a -o ref.json    # walker mode (default)
-api-parity-rs port      path/to/crate-b -o port.json   # annotation mode (default)
-api-parity compare ref.json port.json
+api-parity-rs reference path/to/any-crate -o ref.json
+```
+
+Shells out to `cargo +nightly rustdoc --output-format json` (via [`rustdoc-json`](https://crates.io/crates/rustdoc-json)) and parses the result with [`public-api`](https://crates.io/crates/public-api). Requires `--features walker` at install time and a nightly toolchain at runtime.
+
+</details>
+
+## Cargo features
+
+| Feature  | Default | What it adds |
+| -------- | ------- | ------------ |
+| `cli`    | yes     | The `api-parity-rs` CLI bin (depends on `clap`). |
+| `serde`  |         | `dump_to_writer` JSON helper (depends on `serde` + `serde_json`). |
+| `walker` |         | Reference-mode walker (depends on `public-api` + `rustdoc-json`, implies `cli` + `serde`). |
+
+Target crates that only annotate set `default-features = false, features = ["serde"]` to avoid the CLI / clap compile cost.
+
+## Pipelines
+
+```bash
+# Python reference ↔ Rust port (the canonical case):
+api-parity-py reference pyspark.sql.connect -o ref.json
+api-parity-rs port      path/to/target      -o port.json
+api-parity   compare    ref.json port.json
+
+# Rust ↔ Rust (no annotations needed on either side):
+api-parity-rs reference path/to/crate-a -o ref.json
+api-parity-rs port      path/to/crate-b -o port.json
+api-parity   compare    ref.json port.json
 ```

@@ -63,10 +63,10 @@ noise.
 
 The two production modes are orthogonal to the two kinds:
 
-|                       | `mode = walker`                                    | `mode = annotation`                                  |
-| --------------------- | -------------------------------------------------- | ---------------------------------------------------- |
-| `kind = reference`    | **Default.** Inspect a target's public API surface and emit `{path, kind}` per item. | Code-level declarations (e.g. `@reference(path=…)`) collected at import/link time. |
-| `kind = port`         | Treat every walked item as `status = implemented`; `implementation` = the local symbol. Useful when both sides share a path scheme (e.g. rs-port vs rs-reference). | **Default.** Decorators / attribute macros (`@parity` / `#[parity]`) declare what the local code mirrors and at what status. |
+|                    | `mode = walker` | `mode = annotation` |
+| ------------------ | --------------- | ------------------- |
+| `kind = reference` | **Default.** Inspect a target's public API surface and emit `{path, kind}` per item. | Code-level declarations (e.g. `@parity_ref(path=…)`) collected at import/link time. |
+| `kind = port`      | Treat every walked item as `status = implemented`; `implementation` = the local symbol. Useful when both sides share a path scheme (e.g. rs-port vs rs-reference). | **Default.** Decorators / attribute macros (`@parity` / `#[parity]`) declare what the local code mirrors and at what status. |
 
 A walker is whatever way the host language exposes its public API:
 `inspect.getmembers` for Python, `cargo +nightly rustdoc --output-format
