@@ -1,9 +1,11 @@
 [package]
 name = "api-parity-rs-macros"
+description = "Attribute macros for api-parity-rs (#[parity], #[parity_impl])."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Attribute macros for api-parity-rs (#[parity], #[parity_impl])."
+readme.workspace = true
+repository.workspace = true
 
 [lib]
 proc-macro = true

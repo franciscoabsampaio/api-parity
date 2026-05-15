@@ -1,0 +1,43 @@
+[package]
+name = "api-parity-rs"
+description = "Rust plugin for api-parity — runtime types, attribute macros, port-mode CLI driver, and an optional reference-mode walker."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+
+[lib]
+name = "api_parity_rs"
+path = "src/lib.rs"
+
+[[bin]]
+name = "api-parity-rs"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[dependencies]
+inventory = "0.3"
+api-parity-rs-macros = { workspace = true }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+clap = { version = "4", features = ["derive"], optional = true }
+public-api = { version = "0.51", optional = true }
+rustdoc-json = { version = "0.9", optional = true }
+
+# Used only by the integration tests in `tests/`.
+[dev-dependencies]
+serde_json = "1"
+
+[features]
+# `cargo install api-parity-rs` builds the CLI by default. Target crates
+# that only want to annotate their APIs can opt out with
+# `default-features = false` (and add `features = ["serde"]` if they need
+# the JSON dump helper).
+default = ["cli"]
+cli = ["dep:clap"]
+serde = ["dep:serde", "dep:serde_json"]
+# Reference-mode walker. Pulls in public-api + rustdoc-json + serde for
+# the JSON output. Requires a nightly Rust toolchain at runtime (rustdoc-json
+# invokes `cargo +nightly rustdoc --output-format json`).
+walker = ["cli", "serde", "dep:public-api", "dep:rustdoc-json"]

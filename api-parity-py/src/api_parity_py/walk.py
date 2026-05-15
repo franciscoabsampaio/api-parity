@@ -28,6 +28,7 @@ import importlib
 import inspect
 import pkgutil
 import sys
+from collections import Counter
 
 # `inspect.getmembers(object)` brings in `__init__`, `__doc__`, etc.; we
 # strip those by name to keep the public API list focused on real surface.
@@ -44,20 +45,57 @@ def _preload_submodules(package_name: str) -> None:
     Without this, classes defined in lazy-loaded submodules would never be
     seen by the discovery walk, and string-form forward-reference type
     annotations (`'SparkConnectClient'`) wouldn't resolve.
+
+    Submodules whose import raises (e.g. because an optional dep like
+    pandas isn't installed) are collected and summarized on stderr so an
+    incomplete walk is visibly incomplete instead of silently truncated.
     """
     try:
         pkg = importlib.import_module(package_name)
-    except Exception:
+    except Exception as e:
+        sys.stderr.write(
+            f"api-parity-py: failed to import top-level package "
+            f"{package_name!r}: {type(e).__name__}: {e}\n"
+        )
         return
     pkg_path = getattr(pkg, "__path__", None)
     if pkg_path is None:
         return
+
+    failures: list[tuple[str, BaseException]] = []
+    total = 0
     for _, mod_name, _ in pkgutil.walk_packages(pkg_path, prefix=package_name + "."):
+        total += 1
         try:
             importlib.import_module(mod_name)
-        except Exception:
-            # Optional / extra deps may be missing; that's fine for inventory.
-            pass
+        except Exception as e:
+            failures.append((mod_name, e))
+
+    if failures:
+        _report_skipped(package_name, total, failures)
+
+
+def _report_skipped(
+    package_name: str,
+    total: int,
+    failures: list[tuple[str, BaseException]],
+) -> None:
+    """Print a grouped, terse summary of import failures to stderr."""
+    reasons: Counter[str] = Counter()
+    examples: dict[str, str] = {}
+    for mod, err in failures:
+        first_line = str(err).splitlines()[0][:120] if str(err) else ""
+        key = f"{type(err).__name__}: {first_line}" if first_line else type(err).__name__
+        reasons[key] += 1
+        examples.setdefault(key, mod)
+
+    sys.stderr.write(
+        f"api-parity-py: {package_name}: "
+        f"skipped {len(failures)}/{total} submodule(s) — inventory will be incomplete\n"
+    )
+    for reason, count in reasons.most_common():
+        sys.stderr.write(f"  - [{count}x] {reason}\n")
+        sys.stderr.write(f"      e.g. {examples[reason]}\n")
 
 
 def _raw_attr(cls: type, name: str) -> object:

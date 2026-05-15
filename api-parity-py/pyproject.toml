@@ -1,7 +1,7 @@
 [project]
 name = "api-parity-py"
-version = "0.1.0"
-description = "Reference plugin: walks a Python package and emits its public API surface."
+version = "0.0.2"
+description = "Python plugin for api-parity (reference walker + port annotations)."
 requires-python = ">=3.10"
 dependencies = []
 

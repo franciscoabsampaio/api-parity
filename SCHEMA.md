@@ -27,7 +27,8 @@ Plugins must produce **one** of two `kind`s: `reference` or `port`.
 
 ## Reference entries
 
-Reference plugins describe the public API surface they walked.
+Reference entries describe the canonical public API surface — the set of
+paths that "exist" on the side being mirrored.
 
 ```json
 {"path": "pyspark.sql.session.SparkSession",         "kind": "class"}
@@ -79,10 +80,18 @@ no reference path is **stale** (reference moved/renamed/typo).
 Every plugin must support:
 
 ```
-api-parity-<name> <kind> <target> [-o PATH | -]
+api-parity-<name> <kind> [--mode walker|annotation] <target> [-o PATH | -]
   kind    one of: reference | port
+  --mode  how entries are produced (defaults: reference→walker, port→annotation)
   target  plugin-specific (e.g. python package name, rust crate path)
   -o      output path, or `-` for stdout (default: stdout)
 ```
 
-A plugin that does not support a `kind` exits 64 with a message on stderr.
+`kind` is the consumer-side concept (what role this envelope plays in the
+diff). `mode` is the producer-side concept (how the plugin gathered the
+entries — by *walking* the target's public API, or by collecting *annotations*
+attached to local code). The wire format above is identical across modes:
+the differ doesn't care how an envelope was produced, only what it claims.
+
+A plugin exits 64 with a stderr message when the requested `kind` or
+`(kind, mode)` combination isn't supported or isn't yet implemented.

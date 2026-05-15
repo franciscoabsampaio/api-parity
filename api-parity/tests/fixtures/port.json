@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "kind": "port",
+  "language": "rust",
+  "version": "0.1.0",
+  "source": "mycrate",
+  "entries": [
+    {"path": "tinypkg.A", "implementation": "A", "status": "implemented"},
+    {"path": "tinypkg.A.foo", "implementation": "A::foo", "status": "implemented"},
+    {"path": "tinypkg.A.bar", "implementation": "A::bar", "status": "partial", "comment": "no streaming"},
+    {"path": "tinypkg.A.ghost", "implementation": "A::ghost", "status": "implemented"}
+  ]
+}

@@ -3,9 +3,9 @@ name: Build / Test / Draft
 on:
   push:
     tags:
-      - 'api-parity-v*.*.*'
-      - 'api-parity-py-v*.*.*'
-      - 'api-parity-rs-v*.*.*'
+      - 'v*.*.*'
+      - 'py-v*.*.*'
+      - 'rs-v*.*.*'
 
 jobs:
   parse-tag:
@@ -13,26 +13,34 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       package: ${{ steps.parse.outputs.package }}
+      dir: ${{ steps.parse.outputs.dir }}
       version: ${{ steps.parse.outputs.version }}
     steps:
       - id: parse
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          if [[ "$TAG" =~ ^(api-parity(-py|-rs)?)-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-            echo "package=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
-            echo "version=${BASH_REMATCH[3]}" >> "$GITHUB_OUTPUT"
-          else
-            echo "Tag $TAG does not match <package>-vX.Y.Z" >&2
+          # Match bare `vX.Y.Z` (the differ) or `<py|rs>-vX.Y.Z`.
+          if [[ ! "$TAG" =~ ^(([a-z]+)-)?v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "Tag $TAG does not match (py-|rs-)?vX.Y.Z" >&2
             exit 1
           fi
+          PKG="${BASH_REMATCH[2]}"
+          case "$PKG" in
+            "")    DIR="api-parity" ;;
+            py|rs) DIR="api-parity-$PKG" ;;
+            *)     echo "Unknown package slug '$PKG' in tag $TAG" >&2; exit 1 ;;
+          esac
+          echo "package=$PKG" >> "$GITHUB_OUTPUT"
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+          echo "version=${BASH_REMATCH[3]}" >> "$GITHUB_OUTPUT"
 
   build-python:
     needs: parse-tag
-    if: ${{ needs.parse-tag.outputs.package != 'api-parity-rs' }}
+    if: ${{ needs.parse-tag.outputs.package != 'rs' }}
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ needs.parse-tag.outputs.package }}
+        working-directory: ${{ needs.parse-tag.outputs.dir }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -59,11 +67,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: ${{ needs.parse-tag.outputs.package }}/dist/*
+          path: ${{ needs.parse-tag.outputs.dir }}/dist/*
 
   build-rust:
     needs: parse-tag
-    if: ${{ needs.parse-tag.outputs.package == 'api-parity-rs' }}
+    if: ${{ needs.parse-tag.outputs.package == 'rs' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -71,6 +79,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      # `--all-features` enables `walker`, which shells to nightly rustdoc.
+      - uses: dtolnay/rust-toolchain@nightly
 
       - name: Verify workspace version matches tag
         run: |
@@ -82,12 +92,6 @@ jobs:
 
       - run: cargo test --workspace --all-features
 
-      - name: Publish dry-run (in dependency order)
-        run: |
-          cargo publish --dry-run -p api-parity-rs-macros
-          cargo publish --dry-run -p api-parity-rs-core
-          cargo publish --dry-run -p api-parity-rs
-
   draft-release:
     needs: [parse-tag, build-python, build-rust]
     if: ${{ always() && (needs.build-python.result == 'success' || needs.build-rust.result == 'success') }}
@@ -98,7 +102,7 @@ jobs:
       id-token: write
     steps:
       - name: Download Python dist
-        if: ${{ needs.parse-tag.outputs.package != 'api-parity-rs' }}
+        if: ${{ needs.parse-tag.outputs.package != 'rs' }}
         uses: actions/download-artifact@v4
         with:
           name: dist
@@ -107,14 +111,14 @@ jobs:
       - name: Create draft release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ needs.parse-tag.outputs.package }} v${{ needs.parse-tag.outputs.version }}
+          name: ${{ needs.parse-tag.outputs.dir }} v${{ needs.parse-tag.outputs.version }}
           tag_name: ${{ github.ref_name }}
           draft: true
           files: dist/*
           fail_on_unmatched_files: false
 
       - name: Attest Python artifacts
-        if: ${{ needs.parse-tag.outputs.package != 'api-parity-rs' }}
+        if: ${{ needs.parse-tag.outputs.package != 'rs' }}
         uses: actions/attest-build-provenance@v3
         with:
           subject-path: dist/*

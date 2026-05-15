@@ -18,10 +18,13 @@
 //! The crate is intentionally domain-agnostic: `ParityEntry::path` is
 //! just an opaque string. It can name a PySpark API, a REST endpoint, etc.
 
-// Re-exported so the macros can refer to `::api_parity_rs_core::inventory::submit!`
+// Re-exported so the macros can refer to `::api_parity_rs::inventory::submit!`
 // without users having to add `inventory` as a direct dependency.
 pub use inventory;
 pub use api_parity_rs_macros::{parity, parity_impl};
+
+#[cfg(feature = "walker")]
+pub mod walk;
 
 /// Implementation state of a tracked API.
 ///
@@ -111,7 +114,7 @@ mod dump {
     ///
     /// ```ignore
     /// fn main() {
-    ///     api_parity_rs_core::dump_to_writer(
+    ///     api_parity_rs::dump_to_writer(
     ///         env!("CARGO_PKG_NAME"),
     ///         env!("CARGO_PKG_VERSION"),
     ///         std::io::stdout(),
