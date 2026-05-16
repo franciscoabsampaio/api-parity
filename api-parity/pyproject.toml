@@ -2,8 +2,16 @@
 name = "api-parity"
 version = "0.0.2"
 description = "Cross-language API parity differ and report renderer."
+readme = "README.md"
 requires-python = ">=3.10"
+license = "Apache-2.0"
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/franciscoabsampaio/api-parity"
+Repository = "https://github.com/franciscoabsampaio/api-parity"
+Issues = "https://github.com/franciscoabsampaio/api-parity/issues"
+Changelog = "https://github.com/franciscoabsampaio/api-parity/blob/main/CHANGELOG.md"
 
 [project.scripts]
 api-parity = "api_parity.__main__:main"
