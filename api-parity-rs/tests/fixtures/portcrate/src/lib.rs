@@ -18,3 +18,20 @@ impl Widget {
 
 #[parity(path = "ext.free.solo", status = Partial, comment = "wip")]
 pub fn solo() {}
+
+// `#[parity]` directly on a type definition: `implementation` resolves to
+// `portcrate::Gizmo`.
+#[parity(path = "ext.gizmo.Gizmo", status = Implemented)]
+pub struct Gizmo {
+    pub id: u64,
+}
+
+// `#[parity]` on a `type` alias re-exporting a foreign type. The recorded
+// implementation is the local alias name (`portcrate::DataType`), not the
+// backing `std::collections::HashMap`.
+#[parity(path = "ext.types.DataType", status = Implemented)]
+pub type DataType = std::collections::HashMap<String, String>;
+
+#[cfg(feature = "gated")]
+#[parity(path = "ext.gated.only", status = Implemented)]
+pub fn gated_only() {}

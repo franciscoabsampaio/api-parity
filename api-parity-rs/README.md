@@ -27,7 +27,7 @@ Add the lib as a dep with the default CLI feature off; keep `serde` so the dump 
 
 ```toml
 [dependencies]
-api-parity-rs = { version = "0.0.2", default-features = false, features = ["serde"] }
+api-parity-rs = { version = "0.0.3", default-features = false, features = ["serde"] }
 
 [[bin]]
 name = "api-parity-dump"
@@ -64,6 +64,35 @@ fn main() -> std::io::Result<()> {
 
 A leading `.` in a child `path` is rewritten to `<parent>.<child>` at macro-expansion time. `Status::Unimplemented` requires a `comment`.
 
+`#[parity]` also attaches to a `struct`, `enum`, or `type` alias, registering the type itself with `implementation = <module path>::<name>`:
+
+```rust
+#[parity(path = "pyspark.sql.types.Row", status = Implemented)]
+pub struct Row { /* … */ }
+
+// Port an external type you can't annotate by aliasing it. The entry
+// records the local alias name (`mycrate::DataType`), not the backing
+// `arrow_schema::DataType`.
+#[parity(path = "pyspark.sql.types.DataType", status = Implemented)]
+pub type DataType = arrow_schema::DataType;
+```
+
+If you don't want every consumer of your crate to compile `api-parity-rs`, gate both the dep and the dump bin behind an opt-in feature:
+
+```toml
+[dependencies]
+api-parity-rs = { version = "0.0.3", default-features = false, features = ["serde"], optional = true }
+
+[features]
+parity = ["api-parity-rs"]
+
+[[bin]]
+name = "api-parity-dump"
+required-features = ["parity"]
+```
+
+Then drive the CLI with `api-parity-rs port . -F parity`.
+
 ## CLI usage
 
 ```bash
@@ -74,6 +103,7 @@ api-parity-rs <kind> [--mode walker|annotation] <crate-path> [-o PATH | -]
 - `--mode`: defaults to `annotation` for `port`, `walker` for `reference`.
 - `<crate-path>`: directory containing the target `Cargo.toml`.
 - `-o`: output file, or `-` for stdout (default).
+- `-F` / `--features <list>`, `--no-default-features`, `--all-features`: forwarded to the spawned `cargo run --bin api-parity-dump` (port + annotation mode). Use these when the target crate gates either the dump bin or its `api-parity-rs` dependency behind an opt-in feature.
 
 <details>
 <summary>Example — port mode (annotated Rust target)</summary>
@@ -83,6 +113,14 @@ api-parity-rs port path/to/target-crate -o port.json
 ```
 
 Drives `cargo run --bin api-parity-dump --manifest-path <target>/Cargo.toml` and forwards stdout. The target crate must define `src/bin/api-parity-dump.rs` (see *Annotating a target crate* above).
+
+If the target crate gates its `api-parity-rs` dep (and/or the dump bin) behind an opt-in feature — useful so non-parity builds don't pay the dep cost — pass it through:
+
+```bash
+api-parity-rs port path/to/target -F parity -o port.json
+```
+
+`--no-default-features` and `--all-features` are forwarded the same way.
 
 </details>
 

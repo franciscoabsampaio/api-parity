@@ -12,6 +12,12 @@
 //! - `#[parity(...)]` on a method or free `fn`. Inside an `#[parity_impl]`,
 //!   a leading `.` in `path` (e.g. `.builder`) is replaced at compile time
 //!   with `parent_path + child` (e.g. `pyspark.sql.session.SparkSession.builder`).
+//! - `#[parity(...)]` on a `struct`, `enum`, or `type` alias. Registers the
+//!   type itself, with the implementation set to `module_path!()::<name>`.
+//!   A `type` alias to a foreign type — `pub type MyDataType =
+//!   arrow_schema::DataType;` — is the supported way to port an external
+//!   item you can't attach an attribute to: the entry records the local
+//!   alias name, so `implementation` stays a symbol in *this* crate.
 //!
 //! Recognized arguments:
 //! - `path = "..."` (required to emit an entry).
@@ -24,7 +30,7 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TS2;
 use quote::quote;
 use syn::{
-    parse_macro_input, spanned::Spanned, Attribute, Error, ImplItem, ItemFn,
+    parse_macro_input, spanned::Spanned, Attribute, Error, ImplItem, Item,
     ItemImpl, LitInt, LitStr,
 };
 
@@ -158,17 +164,36 @@ pub fn parity_impl(args: TokenStream, input: TokenStream) -> TokenStream {
     out.into()
 }
 
-/// Attribute on a free `fn`. Used when there's no enclosing impl block to
-/// provide a type prefix; the implementation path becomes
-/// `module_path!()::fn_name` (resolved at compile time of the *user*
-/// crate, since `module_path!()` expands in place).
+/// Attribute on any *named* item with no enclosing impl block: a free `fn`,
+/// or a type definition (`struct`, `enum`, `type` alias). The implementation
+/// path becomes `module_path!()::<name>` (resolved at compile time of the
+/// *user* crate, since `module_path!()` expands in place). For a `type`
+/// alias re-exporting a foreign type, `<name>` is the local alias — so the
+/// recorded implementation is always a symbol in the user's own crate.
 #[proc_macro_attribute]
 pub fn parity(args: TokenStream, input: TokenStream) -> TokenStream {
-    let item: ItemFn = parse_macro_input!(input as ItemFn);
-    let fn_name = item.sig.ident.to_string();
+    let item: Item = parse_macro_input!(input as Item);
+
+    // Every supported item kind contributes its declared name; reject the
+    // rest with a clear diagnostic rather than a confusing parse error.
+    let name = match &item {
+        Item::Fn(f) => f.sig.ident.to_string(),
+        Item::Struct(s) => s.ident.to_string(),
+        Item::Enum(e) => e.ident.to_string(),
+        Item::Type(t) => t.ident.to_string(),
+        other => {
+            return Error::new(
+                other.span(),
+                "parity: `#[parity]` expects a `fn`, `struct`, `enum`, or `type` alias",
+            )
+            .into_compile_error()
+            .into();
+        }
+    };
+
     // We can't compute the path here because we don't know the user's
     // module path — `concat!` defers it until the user crate compiles.
-    let impl_path_expr = quote! { concat!(module_path!(), "::", #fn_name) };
+    let impl_path_expr = quote! { concat!(module_path!(), "::", #name) };
 
     // Reuse the same arg parser as the impl form by wrapping the bare
     // arg TokenStream into a fake attribute.
@@ -180,7 +205,7 @@ pub fn parity(args: TokenStream, input: TokenStream) -> TokenStream {
         Err(e) => e.into_compile_error(),
     };
 
-    // Original fn passes through unchanged; the submit sits beside it.
+    // Original item passes through unchanged; the submit sits beside it.
     let out = quote! {
         #item
         #submit

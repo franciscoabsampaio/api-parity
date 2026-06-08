@@ -9,6 +9,25 @@ independently; the entries below note which package(s) each change affects.
 
 ## Unreleased
 
+## [0.0.3](https://github.com/franciscoabsampaio/api-parity/releases/tag/v0.0.3) - 2026-05-20
+
+### Added
+
+- **api-parity-rs:** `#[parity]` now attaches to a `struct`, `enum`, or
+  `type` alias (previously only free functions and methods), registering
+  the type itself with `implementation = <module path>::<name>`. A `type`
+  alias re-exporting a foreign type is the supported way to port an
+  external item you can't annotate — `pub type DataType =
+  arrow_schema::DataType;` records the local alias name, keeping
+  `implementation` a symbol in your own crate.
+- **api-parity-rs:** CLI now accepts `-F` / `--features`,
+  `--no-default-features`, and `--all-features` and forwards them to
+  the `cargo run --bin api-parity-dump …` it spawns against the
+  target crate. Unblocks crates that gate their dump bin (and the
+  `api-parity-rs` dep itself) behind an opt-in feature.
+- **api-parity:** markdown reports now carry a small attribution line
+  under the title linking back to the project.
+
 ## [0.0.2](https://github.com/franciscoabsampaio/api-parity/releases/tag/v0.0.2) - 2026-05-17
 
 Walker / annotation symmetry across both language plugins, so all four

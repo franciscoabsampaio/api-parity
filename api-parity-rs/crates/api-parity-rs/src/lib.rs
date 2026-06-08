@@ -3,7 +3,8 @@
 //! # How it works
 //!
 //! 1. Source code is annotated with `#[parity_impl]` (on `impl` blocks)
-//!    or `#[parity(...)]` (on free functions). Those macros live in
+//!    or `#[parity(...)]` (on free functions, structs, enums, or type
+//!    aliases). Those macros live in
 //!    `api-parity-rs-macros` and are re-exported below.
 //! 2. Each annotation expands to an `inventory::submit! { ParityEntry { ... } }`
 //!    call. The `inventory` crate uses link-time registration: each

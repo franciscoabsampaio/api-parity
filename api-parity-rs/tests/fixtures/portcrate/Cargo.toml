@@ -14,6 +14,10 @@ path = "src/bin/api-parity-dump.rs"
 [dependencies]
 api-parity-rs = { path = "../../../crates/api-parity-rs", default-features = false, features = ["serde"] }
 
+[features]
+# Used by cli_port_features.rs to verify the CLI forwards `--features`.
+gated = []
+
 # Self-contained workspace so the parent api-parity-rs workspace
 # doesn't try to absorb this fixture as a member.
 [workspace]

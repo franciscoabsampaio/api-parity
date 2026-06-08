@@ -63,7 +63,7 @@ Port plugins describe what the local implementation claims to mirror.
 | Field            | Type            | Notes                                                                      |
 | ---------------- | --------------- | -------------------------------------------------------------------------- |
 | `path`           | string          | Must match a reference `path` to count as covered.                         |
-| `implementation` | string          | Local symbol path (e.g. `SparkSession::sql`).                              |
+| `implementation` | string          | Local symbol path; a fn, method, or type (e.g. `SparkSession::sql`).       |
 | `status`         | string          | `implemented`, `partial`, `unimplemented`.                                 |
 | `since`          | string \| null  | Version where this became available, opaque to core.                       |
 | `issue`          | int \| null     | Tracker issue number, opaque to core.                                      |

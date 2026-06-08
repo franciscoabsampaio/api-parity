@@ -2,8 +2,16 @@
 name = "api-parity-py"
 version = "0.0.2"
 description = "Python plugin for api-parity (reference walker + port annotations)."
+readme = "README.md"
 requires-python = ">=3.10"
+license = "Apache-2.0"
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/franciscoabsampaio/api-parity"
+Repository = "https://github.com/franciscoabsampaio/api-parity"
+Issues = "https://github.com/franciscoabsampaio/api-parity/issues"
+Changelog = "https://github.com/franciscoabsampaio/api-parity/blob/main/CHANGELOG.md"
 
 [project.scripts]
 api-parity-py = "api_parity_py.__main__:main"
