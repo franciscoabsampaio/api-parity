@@ -35,6 +35,19 @@ struct Args {
     /// Name of the dump bin in the target crate (only used in port + annotation mode).
     #[arg(long, default_value = "api-parity-dump")]
     bin: String,
+
+    /// Space- or comma-separated cargo features to enable on the target crate.
+    /// Forwarded as `--features <…>` to `cargo run` (port + annotation mode).
+    #[arg(short = 'F', long)]
+    features: Option<String>,
+
+    /// Forward `--no-default-features` to cargo (port + annotation mode).
+    #[arg(long)]
+    no_default_features: bool,
+
+    /// Forward `--all-features` to cargo (port + annotation mode).
+    #[arg(long)]
+    all_features: bool,
 }
 
 #[derive(Copy, Clone, ValueEnum)]
@@ -63,8 +76,14 @@ fn main() -> ExitCode {
         return ExitCode::from(1);
     }
 
+    let cargo_features = CargoFeatures {
+        features: args.features.as_deref(),
+        no_default_features: args.no_default_features,
+        all_features: args.all_features,
+    };
+
     let payload = match (args.kind, mode) {
-        (Kind::Port, Mode::Annotation) => run_dump_bin(&manifest, &args.bin),
+        (Kind::Port, Mode::Annotation) => run_dump_bin(&manifest, &args.bin, &cargo_features),
         (Kind::Reference, Mode::Walker) => run_walker(&manifest),
         (Kind::Port, Mode::Walker) => Err((
             EXIT_USAGE,
@@ -92,12 +111,32 @@ fn default_mode(kind: Kind) -> Mode {
     }
 }
 
-fn run_dump_bin(manifest: &std::path::Path, bin: &str) -> Result<Vec<u8>, (u8, String)> {
-    let result = Command::new("cargo")
-        .args(["run", "--quiet", "--release", "--bin", bin, "--manifest-path"])
-        .arg(manifest)
-        .output();
-    let out = result.map_err(|e| (1, format!("failed to invoke cargo: {e}")))?;
+struct CargoFeatures<'a> {
+    features: Option<&'a str>,
+    no_default_features: bool,
+    all_features: bool,
+}
+
+fn run_dump_bin(
+    manifest: &std::path::Path,
+    bin: &str,
+    features: &CargoFeatures<'_>,
+) -> Result<Vec<u8>, (u8, String)> {
+    let mut cmd = Command::new("cargo");
+    cmd.args(["run", "--quiet", "--release", "--bin", bin, "--manifest-path"])
+        .arg(manifest);
+    if let Some(f) = features.features {
+        cmd.arg("--features").arg(f);
+    }
+    if features.no_default_features {
+        cmd.arg("--no-default-features");
+    }
+    if features.all_features {
+        cmd.arg("--all-features");
+    }
+    let out = cmd
+        .output()
+        .map_err(|e| (1, format!("failed to invoke cargo: {e}")))?;
     if !out.status.success() {
         return Err((
             out.status.code().unwrap_or(1) as u8,

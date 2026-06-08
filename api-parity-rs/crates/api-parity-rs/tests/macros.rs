@@ -147,7 +147,66 @@ fn parity_on_free_fn_uses_module_path() {
 }
 
 // ---------------------------------------------------------------------------
-// Test 4 — dump_to_writer envelope shape (serde feature only).
+// Test 4 — #[parity] on type definitions (struct, enum, type alias).
+//
+// Mirrors the free-fn case: with no enclosing impl, the implementation is
+// `module_path!()::<name>`. A `type` alias re-exporting a foreign type
+// records the *local* alias name, never the backing type — so a consumer
+// reading the report sees the symbol that lives in this crate.
+// ---------------------------------------------------------------------------
+
+#[parity(path = "ext.type.gizmo", status = Implemented)]
+struct Gizmo {
+    id: u64,
+}
+
+#[parity(path = "ext.type.color", status = Partial, comment = "no alpha")]
+enum Color {
+    Red,
+    Green,
+}
+
+#[parity(path = "ext.type.datatype", status = Implemented)]
+type DataType = std::collections::HashMap<String, String>;
+
+#[test]
+fn parity_on_type_definitions_uses_module_path() {
+    let find = |path: &str| {
+        inventory::iter::<ParityEntry>
+            .into_iter()
+            .find(|e| e.path == path)
+            .unwrap_or_else(|| panic!("entry {path} should be registered"))
+    };
+
+    let gizmo = find("ext.type.gizmo");
+    assert!(
+        gizmo.implementation.ends_with("::Gizmo"),
+        "implementation = {}",
+        gizmo.implementation,
+    );
+    assert_eq!(gizmo.status, Status::Implemented);
+
+    let color = find("ext.type.color");
+    assert!(color.implementation.ends_with("::Color"));
+    assert_eq!(color.status, Status::Partial);
+
+    // The alias records its own name, not the backing `HashMap` — this is
+    // the whole point of porting an external type through a local alias.
+    let dt = find("ext.type.datatype");
+    assert!(
+        dt.implementation.ends_with("::DataType"),
+        "implementation = {}",
+        dt.implementation,
+    );
+    assert!(
+        !dt.implementation.contains("HashMap"),
+        "alias must record the local name, not the backing type: {}",
+        dt.implementation,
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test 5 — dump_to_writer envelope shape (serde feature only).
 //
 // Exercises the only non-macro public function in the crate. Asserts the
 // envelope keys match SCHEMA.md (`schema_version`, `kind = "port"`,
@@ -172,8 +231,8 @@ fn dump_to_writer_emits_sorted_envelope() {
     assert_eq!(v["version"], "9.9.9");
 
     let arr = v["entries"].as_array().unwrap();
-    // 4 from Widget + 1 from Naked + 1 from solo = 6 minimum.
-    assert!(arr.len() >= 6, "expected ≥6 entries, got {}", arr.len());
+    // 4 from Widget + 1 from Naked + 1 from solo + 3 type defs = 9 minimum.
+    assert!(arr.len() >= 9, "expected ≥9 entries, got {}", arr.len());
     for w in arr.windows(2) {
         assert!(
             w[0]["path"].as_str().unwrap() <= w[1]["path"].as_str().unwrap(),

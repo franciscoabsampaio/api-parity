@@ -62,6 +62,23 @@ fn cli_port_annotation_emits_envelope_from_fixture_crate() {
     assert!(paths.contains(&"ext.widget.Widget.foo"), "got: {paths:?}");
     assert!(paths.contains(&"ext.widget.Widget.bar"), "got: {paths:?}");
     assert!(paths.contains(&"ext.free.solo"), "got: {paths:?}");
+    assert!(paths.contains(&"ext.gizmo.Gizmo"), "got: {paths:?}");
+    assert!(paths.contains(&"ext.types.DataType"), "got: {paths:?}");
+
+    // The type-alias entry records the local alias name, never the
+    // backing `std::collections::HashMap`.
+    let datatype = entries
+        .iter()
+        .find(|e| e["path"] == "ext.types.DataType")
+        .expect("ext.types.DataType entry");
+    assert!(
+        datatype["implementation"]
+            .as_str()
+            .unwrap()
+            .ends_with("::DataType"),
+        "got: {}",
+        datatype["implementation"],
+    );
 
     for w in entries.windows(2) {
         assert!(
