@@ -16,6 +16,11 @@ def render(report: dict) -> str:
 
     out.append("# API parity report")
     out.append("")
+    out.append(
+        "_Generated with [api-parity](https://github.com/franciscoabsampaio/api-parity)._"
+    )
+    out.append("")
+
     out.append(f"- Reference: {ref.get('language')} `{ref.get('source')}` "
                f"(version `{ref.get('version')}`)")
     out.append(f"- Port:      {port.get('language')} `{port.get('source')}` "
