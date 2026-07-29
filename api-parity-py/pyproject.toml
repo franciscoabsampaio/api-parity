@@ -1,6 +1,6 @@
 [project]
 name = "api-parity-py"
-version = "0.0.2"
+version = "0.0.3"
 description = "Python plugin for api-parity (reference walker + port annotations)."
 readme = "README.md"
 requires-python = ">=3.10"

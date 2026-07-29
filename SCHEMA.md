@@ -89,9 +89,22 @@ api-parity-<name> <kind> [--mode walker|annotation] <target> [-o PATH | -]
 
 `kind` is the consumer-side concept (what role this envelope plays in the
 diff). `mode` is the producer-side concept (how the plugin gathered the
-entries — by *walking* the target's public API, or by collecting *annotations*
-attached to local code). The wire format above is identical across modes:
-the differ doesn't care how an envelope was produced, only what it claims.
+entries — by *walking* the target's public API, by collecting *annotations*
+attached to local code, or by *parsing* source without loading it). The wire
+format above is identical across modes: the differ doesn't care how an
+envelope was produced, only what it claims.
+
+`target` names the same thing in every mode — the module, package, or crate
+being inventoried. `walker` and `annotation` load it, so it must be
+importable or buildable.
+
+`--mode` selects among the modes that need nothing but a target. A mode
+needing more is selected by the argument it requires: `ast` loads nothing,
+so it has to be told where the source is, and `api-parity-py` spells that
+`--from-source PATH`.
+
+Not every plugin implements every mode; `ast` is available in `api-parity-py`
+for `kind = reference` as of py-0.0.3.
 
 A plugin exits 64 with a stderr message when the requested `kind` or
 `(kind, mode)` combination isn't supported or isn't yet implemented.

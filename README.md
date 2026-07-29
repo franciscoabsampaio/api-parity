@@ -32,7 +32,7 @@ api-parity   compare    ref.json port.json  -o report.md
 
 ## Usage by direction
 
-Both plugins support `kind ∈ {reference, port}` and `mode ∈ {walker, annotation}` — four combinations per side, picked independently. Pick the section that matches what you're comparing:
+Both plugins support `kind ∈ {reference, port}` and `mode ∈ {walker, annotation}` — four combinations per side, picked independently. `api-parity-py` adds a third mode, `ast`, for references that can't be imported (see *Inventorying source you can't import*). Pick the section that matches what you're comparing:
 
 <details>
 <summary><strong>Rust port against Python reference</strong> — annotate a Rust crate, diff against PySpark or any Python library</summary>
@@ -157,18 +157,32 @@ A future `api-parity-ai` plugin is planned to handle translation between path sc
 
 </details>
 
+## Inventorying source you can't import
+
+The walker imports its target. Sometimes the thing you want to mirror can't be imported — a test suite its distribution doesn't ship, or a module whose import pulls in a dependency graph that fails for reasons having nothing to do with the names you're after. `api-parity-py` can read those names off the syntax tree instead:
+
+```bash
+# Vendor the upstream file, then inventory it without loading it
+api-parity-py reference pyspark.sql.tests.test_catalog \
+  --from-source vendor/test_catalog.py -o ref.json
+```
+
+`target` means the same thing here as in every other mode — the dotted name being inventoried. `--from-source` only says where to read it from, since it can't be imported. Entries therefore key to the paths your annotations are written against, rather than to wherever the file happens to sit in your checkout.
+
+Only lexically-present names are visible. Base classes are names rather than resolved classes, so `class Sub(Mixin)` emits `Sub` alone and `Mixin`'s methods stay attributed to `Mixin`; anything constructed at import time isn't there to see; and `kind` follows decorator spelling, so a custom descriptor reads as a method. Use `walker` whenever the target imports cleanly.
+
 ## How it works
 
-Plugins emit JSON envelopes (one of `kind = reference` or `kind = port`). The differ left-joins port entries onto reference entries by `path` and renders a report. `mode` is a *producer-side* choice (walking the public API surface vs. collecting code annotations) and is orthogonal to `kind`.
+Plugins emit JSON envelopes (one of `kind = reference` or `kind = port`). The differ left-joins port entries onto reference entries by `path` and renders a report. `mode` is a *producer-side* choice (walking the public API surface, collecting code annotations, or parsing source without loading it) and is orthogonal to `kind`.
 
 For the wire format see [`SCHEMA.md`](SCHEMA.md). For plugin authorship see [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Layout
 
 - [`api-parity/`](api-parity/) — the differ (`api-parity compare`)
-- [`api-parity-py/`](api-parity-py/) — Python plugin (walker + decorators)
+- [`api-parity-py/`](api-parity-py/) — Python plugin (walker + decorators + source parser)
 - [`api-parity-rs/`](api-parity-rs/) — Rust plugin (workspace: `api-parity-rs` + `api-parity-rs-macros`)
 
 ## Status
 
-See [`CHANGELOG.md`](CHANGELOG.md). 0.0.2 ships walker/annotation symmetry on both plugins, so all four directions in the *Usage* section are supported.
+See [`CHANGELOG.md`](CHANGELOG.md). 0.0.2 ships walker/annotation symmetry on both plugins, so all four directions in the *Usage* section are supported. py-0.0.3 adds `--from-source` to the Python plugin for references that can't be imported.

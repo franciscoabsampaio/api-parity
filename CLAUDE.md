@@ -26,12 +26,27 @@ Three packages, each released independently:
 
 `kind` is consumer-side, `mode` is producer-side:
 
-|                    | `mode = walker` | `mode = annotation` |
-| ------------------ | --------------- | ------------------- |
-| `kind = reference` | **Default.** Public-API walk. | `@parity_ref` decorators. |
-| `kind = port`      | Walked surface as implemented. | **Default.** `@parity` / `#[parity]`. |
+|                    | `mode = walker` | `mode = annotation` | `mode = ast` |
+| ------------------ | --------------- | ------------------- | ------------ |
+| `kind = reference` | **Default.** Public-API walk. | `@parity_ref` decorators. | Parse source, no import. py only. |
+| `kind = port`      | Walked surface as implemented. | **Default.** `@parity` / `#[parity]`. | — |
 
-All four (kind, mode) combos work on both plugins as of 0.0.2.
+All four (kind, walker/annotation) combos work on both plugins as of
+0.0.2. `ast` is `api-parity-py` only, reference only, as of py-0.0.3.
+
+`walker` and `annotation` both load the target; `ast` doesn't, which is
+the entire point of it — it exists for targets that can't be loaded at
+all (a test suite a distribution doesn't ship) or can't be loaded here
+(an import that drags in a dependency graph unrelated to the names being
+read). The cost is that only lexically-present names are visible:
+inherited members stay with the class that declares them, import-time
+construction is invisible, and `kind` follows decorator spelling. It is
+a fallback, not a default.
+
+`target` stays the dotted name in every mode; `ast` is selected by
+`--from-source PATH`, which says where to read it from instead of
+importing it. Module names come from `target`, so a vendored tree keys
+to the names it has upstream rather than to its checkout location.
 
 ## Wire format
 
@@ -49,8 +64,9 @@ All four (kind, mode) combos work on both plugins as of 0.0.2.
 
 ## Status
 
-0.0.2 shipped. All four directions (py↔py, py↔rs, rs↔py, rs↔rs)
-work end-to-end. See [`CHANGELOG.md`](CHANGELOG.md).
+Shipped: `api-parity` 0.0.3, `api-parity-rs` 0.0.3, `api-parity-py`
+0.0.3. All four directions (py↔py, py↔rs, rs↔py, rs↔rs) work
+end-to-end. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Roadmap
 
@@ -60,12 +76,6 @@ Python `.`). Translation should run a heuristic pass first
 (substring / casing / module-prefix rewriting), so the model only
 handles genuinely ambiguous cases. Produces the same envelopes
 everything else does.
-
-**Spark-Connect migration.** `../spark-connect` still imports its
-in-tree `crates/api-parity-{core,macros}`. Migrate it to the
-published `api-parity-rs` + `api-parity-rs-macros`. Breaking
-renames: macro arg `reference = "..."` → `path = "..."`; emitted
-paths `::api_parity_rs::…` instead of `::api_parity_core::…`.
 
 ## Layout
 

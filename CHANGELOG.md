@@ -9,6 +9,24 @@ independently; the entries below note which package(s) each change affects.
 
 ## Unreleased
 
+## [py-0.0.3](https://github.com/franciscoabsampaio/api-parity/releases/tag/py-v0.0.3) - 2026-07-29
+
+`api-parity-py` only; `api-parity` and `api-parity-rs` are unchanged at
+0.0.3.
+
+### Added
+
+- **api-parity-py:** `--from-source PATH`, selecting a third producer
+  for `kind = reference` (`mode = ast`). Parses the source at `PATH`
+  instead of importing the target, for targets the walker can't load — a
+  test suite its distribution doesn't ship, or an import that fails on
+  unrelated dependencies. Emits the same entries as the walker, but sees
+  only lexically-present names: inherited members stay with the class
+  that declares them. Prefer `walker` when the target imports cleanly.
+  `target` keeps its meaning in every mode — the dotted name being
+  inventoried — so entries key to what annotations are written against
+  no matter where a vendored tree sits in your checkout.
+
 ## [0.0.3](https://github.com/franciscoabsampaio/api-parity/releases/tag/v0.0.3) - 2026-05-20
 
 ### Added

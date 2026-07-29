@@ -10,14 +10,15 @@ See the [project README](https://github.com/franciscoabsampaio/api-parity) for t
 pip install api-parity-py
 ```
 
-## Two modes
+## Modes
 
-The plugin supports both production modes on both kinds of envelope:
+How entries get produced, chosen with `--mode`:
 
-- **Walker** — introspects a package's public API via `inspect.getmembers` and emits one entry per class / method / property / function.
-- **Annotation** — collects decorators (`@parity`, `@parity_impl`, `@parity_ref`) attached to your own code at import time.
+- **Walker** — introspects a package's public API via `inspect.getmembers` and emits one entry per class / method / property / function. Works on both kinds of envelope.
+- **Annotation** — collects decorators (`@parity`, `@parity_impl`, `@parity_ref`) attached to your own code at import time. Works on both kinds of envelope.
+- **AST** — parses source files with `ast`, without importing them. `reference` only.
 
-Defaults: `reference → walker`, `port → annotation`. Override with `--mode`.
+Defaults: `reference → walker`, `port → annotation`.
 
 ## Usage
 
@@ -31,6 +32,19 @@ api-parity-py port mylib -o port.json
 # Or walk your own library and treat every public API as implemented:
 api-parity-py port --mode=walker mylib -o port.json
 ```
+
+## Inventorying source you can't import
+
+Both the walker and the annotation collector load the target. When that isn't possible — a test suite its distribution doesn't ship, or a module whose import pulls in a dependency graph that fails for reasons unrelated to the names you want — read the names off the syntax tree instead:
+
+```bash
+api-parity-py reference pyspark.sql.tests.test_catalog \
+  --from-source vendor/test_catalog.py -o ref.json
+```
+
+`target` is the dotted name in every mode; `--from-source` (which selects `mode = ast`) only changes where the names are read from. Point it at a file and `target` names that module; point it at a directory and `target` names that package, with the files beneath it extending the name. Either way entries key to the paths your annotations are written against, not to where the source sits in your checkout.
+
+Only lexically-present names are visible: base classes are names rather than resolved classes, so inherited members stay attributed to the class that declares them; import-time construction is invisible; and `kind` follows decorator spelling. Prefer the walker whenever the target imports cleanly.
 
 ## Annotating a Python port
 
