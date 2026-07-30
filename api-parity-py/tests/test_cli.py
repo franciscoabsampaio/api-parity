@@ -7,6 +7,7 @@ shape against the synthetic fixtures.
 
 import json
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -30,6 +31,9 @@ def _isolate():
     _purge("tinypkg", "portpkg")
 
 
+SRCTREE = Path(__file__).parent / "fixtures" / "srctree"
+
+
 def _run(*argv: str, capsys) -> dict:
     """Invoke the CLI and return the parsed-JSON stdout envelope."""
     import sys as _sys
@@ -38,6 +42,14 @@ def _run(*argv: str, capsys) -> dict:
     assert rc == 0, capsys.readouterr().err
     out = capsys.readouterr().out
     return json.loads(out)
+
+
+def _fail(*argv: str, capsys) -> str:
+    """Invoke the CLI expecting a usage exit, and return stderr."""
+    import sys as _sys
+    _sys.argv = ["api-parity-py", *argv]
+    assert cli.main() == cli.EXIT_USAGE
+    return capsys.readouterr().err
 
 
 def test_reference_walker_against_tinypkg(capsys):
@@ -80,3 +92,36 @@ def test_port_walker_against_tinypkg(capsys):
     for e in env["entries"]:
         assert e["status"] == "implemented"
         assert e["implementation"] == e["path"]
+
+
+def test_reference_ast_keys_entries_under_the_target(capsys):
+    """`--from-source` is the whole selector for mode=ast; `target` keeps
+    its usual meaning — the dotted name — and the scanned tree is keyed
+    beneath it."""
+    env = _run(
+        "reference", "acme.vendored", f"--from-source={SRCTREE}", capsys=capsys
+    )
+    assert env["kind"] == "reference"
+    assert env["source"] == "acme.vendored"
+    paths = {e["path"] for e in env["entries"]}
+    assert "acme.vendored.gadgets.Gadget" in paths
+    assert "acme.vendored.sub.nested.Deep" in paths
+
+
+def test_from_source_conflicts_with_a_loading_mode(capsys):
+    """The two are mutually exclusive: `--mode` picks between the
+    producers that import the target, and `--from-source` exists
+    precisely so nothing has to be imported."""
+    err = _fail(
+        "reference", "acme", "--mode=walker", f"--from-source={SRCTREE}", capsys=capsys
+    )
+    assert "--mode walker loads the target" in err
+
+
+def test_from_source_rejects_several_targets(capsys):
+    """One root maps to one dotted name; several targets have no defined
+    pairing with several paths."""
+    err = _fail(
+        "reference", "acme,other", f"--from-source={SRCTREE}", capsys=capsys
+    )
+    assert "takes one target" in err
